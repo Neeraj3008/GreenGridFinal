@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "205692023821",
+    "project_id": "greengrid-c75f2",
+    "storage_bucket": "greengrid-c75f2.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:205692023821:android:262175b70b8e23e3aa5144",
+        "android_client_info": {
+          "package_name": "com.example.greengrid"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAG4HiArHN0OPysKq550SsFhuc9vky9u0s"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

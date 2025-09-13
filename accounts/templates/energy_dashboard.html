@@ -1,0 +1,169 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container mt-5">
+  <h2 class="text-center mb-4">Welcome, {{ user.email }}</h2>
+
+  <!-- Summary cards -->
+  <div class="row mb-4">
+    <div class="col-md-4 mb-4">
+      <div class="card shadow-sm border-0 text-center">
+        <div class="card-body">
+          <h5 class="card-title">Energy Saved</h5>
+          <p class="display-6" id="energyTotal">{{ total_energy|floatformat:2 }} kWh</p>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-4 mb-4">
+      <div class="card shadow-sm border-0 text-center">
+        <div class="card-body">
+          <h5 class="card-title">Carbon Reduction</h5>
+          <p class="display-6" id="carbonTotal">{{ total_carbon|floatformat:2 }} kg CO₂</p>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-4 mb-4">
+      <div class="card shadow-sm border-0 text-center">
+        <div class="card-body">
+          <h5 class="card-title">Cost Saved</h5>
+          <p class="display-6" id="costTotal">Rs {{ total_cost|floatformat:2 }}</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Household cards -->
+  <div class="row mb-5" id="householdCards">
+    {% for household in households %}
+    <div class="col-md-4 mb-4">
+      <div class="card shadow-sm border-0 text-center">
+        <div class="card-body">
+          <h5 class="card-title">{{ household.meter_id }}</h5>
+          <p>Energy: {{ household.consumption }} kWh</p>
+          <p>Carbon: {{ household.carbon }} kg CO₂</p>
+          <p>Timestamp: {{ household.timestamp }}</p>
+        </div>
+      </div>
+    </div>
+    {% empty %}
+    <div class="col-12 text-center">
+      <p>No household data available.</p>
+    </div>
+    {% endfor %}
+  </div>
+
+  <!-- Meter selection -->
+  <div class="mb-3">
+    <label for="meterSelect" class="form-label">Select Meter to Plot</label>
+    <select id="meterSelect" class="form-select">
+      <option value="">-- Select Meter --</option>
+      {% for meter in meter_ids %}
+      <option value="{{ meter }}">{{ meter }}</option>
+      {% endfor %}
+    </select>
+  </div>
+
+  <!-- Graph -->
+  <canvas id="meterChart" width="800" height="400" style="max-width:100%;"></canvas>
+
+</div>
+
+<!-- Chart.js -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+    let chart = null;
+    let currentMeter = null;
+
+    function fetchAndUpdate(meterId) {
+        if (!meterId) return;
+
+        fetch(`/meter-data/${meterId}/`)
+            .then(res => res.json())
+            .then(data => {
+                const labels = data.map(d => d.timestamp);
+                const carbon = data.map(d => d.carbon);
+                const consumption = data.map(d => d.consumption);
+
+                const ctx = document.getElementById("meterChart").getContext("2d");
+
+                if (chart) {
+                    chart.destroy(); // Destroy old chart before creating new one
+                }
+
+                chart = new Chart(ctx, {
+                    type: "line",
+                    data: {
+                        labels: labels,
+                        datasets: [
+                            { label: "Carbon", data: carbon, borderColor: "rgba(255,99,132,1)", fill: false },
+                            { label: "Consumption", data: consumption, borderColor: "rgba(54,162,235,1)", fill: false }
+                        ]
+                    },
+                    options: {
+                        responsive: true,
+                        animation: { duration: 500 },
+                        scales: {
+                            x: { title: { display: true, text: "Time" } },
+                            y: { title: { display: true, text: "Value" } }
+                        }
+                    }
+                });
+            })
+            .catch(err => console.error("Error fetching data:", err));
+    }
+
+    // Handle dropdown change
+    const meterSelect = document.getElementById("meterSelect");
+    meterSelect.addEventListener("change", function () {
+        currentMeter = this.value;
+        fetchAndUpdate(currentMeter);
+    });
+
+    // Auto-refresh every 10s for selected meter
+    setInterval(function () {
+        if (currentMeter) {
+            fetchAndUpdate(currentMeter);
+        }
+    }, 10000);
+});
+</script>
+
+<script>
+function updateSummary() {
+    fetch("/summary-data/")
+    .then(res => res.json())
+    .then(data => {
+        // Update totals
+        document.querySelector("#energyTotal").innerText = data.total_energy.toFixed(2) + " kWh";
+        document.querySelector("#carbonTotal").innerText = data.total_carbon.toFixed(2) + " kg CO₂";
+        document.querySelector("#costTotal").innerText = "Rs " + data.total_cost.toFixed(2);
+
+        // Update household cards
+        const container = document.querySelector("#householdCards");
+        container.innerHTML = "";
+        data.households.forEach(h => {
+            container.innerHTML += `
+              <div class="col-md-4 mb-4">
+                <div class="card shadow-sm border-0 text-center">
+                  <div class="card-body">
+                    <h5 class="card-title">${h.meter_id}</h5>
+                    <p>Energy: ${h.consumption.toFixed(2)} kWh</p>
+                    <p>Carbon: ${h.carbon.toFixed(2)} kg CO₂</p>
+                    <p>Timestamp: ${h.timestamp}</p>
+                  </div>
+                </div>
+              </div>
+            `;
+        });
+    });
+}
+
+// refresh every 10s
+setInterval(updateSummary, 10000);
+
+</script>
+
+
+{% endblock %}
+
